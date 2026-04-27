@@ -262,10 +262,10 @@ h1 {
 .area-option {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) auto;
-  min-height: 46px;
+  min-height: 58px;
   align-items: center;
   gap: 12px;
-  padding: 0 14px;
+  padding: 8px 14px;
   border: 1px solid #e6e9ef;
   border-radius: 14px;
   background: #fff;
@@ -275,8 +275,26 @@ h1 {
 }
 
 .area-option span {
+  min-width: 0;
+}
+
+.area-option strong {
+  display: block;
   font-size: 0.94rem;
   font-weight: 700;
+}
+
+.area-option em {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .area-option small {
@@ -476,7 +494,7 @@ h1 {
 
 .question-card {
   margin: 0 24px 12px;
-  padding: 24px 26px;
+  padding: 22px 26px;
   border: 1px solid #edf0f5;
   border-radius: 22px;
   background: #fff;
@@ -513,7 +531,7 @@ h1 {
   max-width: 720px;
   margin: 0 0 10px;
   color: var(--text);
-  font-size: clamp(1.7rem, 2.55vw, 2.25rem);
+  font-size: clamp(1.58rem, 2.3vw, 2.1rem);
   font-weight: 680;
   line-height: 1.05;
   letter-spacing: 0;
@@ -521,7 +539,7 @@ h1 {
 
 .question-card p {
   max-width: 680px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   color: var(--muted);
   font-size: 1rem;
   line-height: 1.55;
@@ -530,8 +548,8 @@ h1 {
 .answer-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
-  margin-bottom: 22px;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
 .answer-button {
@@ -540,8 +558,8 @@ h1 {
   column-gap: 12px;
   align-items: center;
   align-content: center;
-  min-height: 72px;
-  padding: 14px;
+  min-height: 60px;
+  padding: 11px 14px;
   border: 1px solid #e6e9ef;
   border-radius: 18px;
   background: #fff;
@@ -562,15 +580,15 @@ h1 {
 
 .answer-button span {
   display: block;
-  margin-bottom: 5px;
-  font-size: 1.02rem;
+  margin-bottom: 3px;
+  font-size: 0.98rem;
   font-weight: 720;
 }
 
 .answer-button small {
   grid-column: 2;
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: 0.8rem;
   line-height: 1.35;
 }
 
@@ -659,7 +677,7 @@ h1 {
   margin-bottom: 12px;
   color: white;
   max-width: 100%;
-  font-size: clamp(2.65rem, 5vw, 4.45rem);
+  font-size: clamp(2.35rem, 4.15vw, 3.72rem);
   font-weight: 760;
   line-height: 1;
   overflow-wrap: anywhere;
@@ -674,7 +692,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  margin-bottom: 22px;
+  margin-bottom: 14px;
 }
 
 .result-metrics div {
@@ -693,8 +711,45 @@ h1 {
 
 .result-metrics strong {
   color: white;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 760;
+}
+
+.result-dimensions {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.result-dimensions div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px;
+  align-items: center;
+  gap: 12px;
+}
+
+.result-dimensions span {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-dimensions i {
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.result-dimensions b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: white;
 }
 
 .result-next ul {
@@ -711,6 +766,7 @@ h1 {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.14);
   color: white;
+  overflow-wrap: anywhere;
 }
 
 .wizard-card.result-mode .ghost-button {

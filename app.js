@@ -402,10 +402,44 @@ const state = {
 const maturityLabels = {
   0: "Manual",
   1: "Básico",
-  2: "Ordenado",
+  2: "Estandarizado",
   3: "Automatizado",
-  4: "Escalable",
+  4: "Inteligente",
 };
+
+const maturityNames = {
+  1: "Nivel 1 - Manual / BÃ¡sico",
+  2: "Nivel 2 - Procesos Estandarizados",
+  3: "Nivel 3 - Automatizado",
+  4: "Nivel 4 - Inteligente / Orquestado",
+};
+
+const answerOptions = [
+  {
+    key: "none",
+    level: 1,
+    label: "No existe",
+    detail: "Hoy se gestiona de forma manual.",
+  },
+  {
+    key: "partial",
+    level: 2,
+    label: "Existe parcialmente",
+    detail: "Funciona solo en una parte del negocio.",
+  },
+  {
+    key: "consistent",
+    level: 3,
+    label: "Implementado",
+    detail: "Se usa de forma consistente.",
+  },
+  {
+    key: "integrated",
+    level: 4,
+    label: "Integrado y optimizado",
+    detail: "Conectado con sistemas y mejoras periÃ³dicas.",
+  },
+];
 
 const taskList = document.querySelector("#taskList");
 const questionCard = document.querySelector("#questionCard");
@@ -452,6 +486,8 @@ function getIdeaState(idea) {
   if (!state.selections[idea.id]) {
     state.selections[idea.id] = {
       answered: false,
+      answer: "",
+      level: 0,
       done: false,
       wanted: false,
       status: "no-iniciada",
@@ -472,14 +508,14 @@ function maturityFromPoints(points, maxPoints) {
 }
 
 function getScores(ideas = allIdeas()) {
-  const max = ideas.reduce((sum, idea) => sum + idea.maturity, 0);
+  const max = ideas.length * 4;
   const current = ideas.reduce((sum, idea) => {
     const values = getIdeaState(idea);
-    return sum + (values.done ? idea.maturity : 0);
+    return sum + (values.answered ? values.level : 0);
   }, 0);
   const potential = ideas.reduce((sum, idea) => {
     const values = getIdeaState(idea);
-    return sum + (values.done || values.wanted ? idea.maturity : 0);
+    return sum + (values.answered ? Math.max(values.level, idea.maturity) : idea.maturity);
   }, 0);
 
   return {
@@ -497,9 +533,54 @@ function currentIdea() {
   return activeIdeas()[state.currentIndex];
 }
 
+function answeredStats(ideas = activeIdeas()) {
+  const answered = ideas.filter((idea) => getIdeaState(idea).answered).length;
+  return {
+    answered,
+    total: ideas.length,
+    percent: ideas.length ? Math.round((answered / ideas.length) * 100) : 0,
+  };
+}
+
+function dimensionForIdea(idea) {
+  const tag = `${idea.type} ${idea.areaKey}`.toLowerCase();
+  if (/integraci|crm|inventario|datos|bi|control|dashboard|analytics|fuentes/.test(tag)) {
+    return "IntegraciÃ³n de Sistemas";
+  }
+  if (/score|segment|insight|anÃ¡lisis|priorizaci|riesgo|ia/.test(tag)) {
+    return "Inteligencia / IA aplicada";
+  }
+  if (/cultura|capacitaci|experiencia|soporte|helpdesk|rrhh/.test(tag)) {
+    return "GestiÃ³n del Cambio";
+  }
+  return "Eficiencia Operativa";
+}
+
+function getDimensionScores(ideas = activeIdeas()) {
+  const dimensions = [
+    "Eficiencia Operativa",
+    "IntegraciÃ³n de Sistemas",
+    "Inteligencia / IA aplicada",
+    "GestiÃ³n del Cambio",
+  ];
+
+  return dimensions.map((dimension) => {
+    const scoped = ideas.filter((idea) => dimensionForIdea(idea) === dimension);
+    const total = scoped.length * 4;
+    const current = scoped.reduce((sum, idea) => sum + getIdeaState(idea).level, 0);
+    return {
+      dimension,
+      percent: total ? Math.round((current / total) * 100) : 0,
+    };
+  });
+}
+
 function topWantedIdeas() {
   return activeIdeas()
-    .filter((idea) => getIdeaState(idea).wanted && !getIdeaState(idea).done)
+    .filter((idea) => {
+      const values = getIdeaState(idea);
+      return values.answered && values.level < idea.maturity;
+    })
     .sort((a, b) => b.maturity - a.maturity)
     .slice(0, 4);
 }
@@ -507,9 +588,12 @@ function topWantedIdeas() {
 function renderResult() {
   const ideas = activeIdeas();
   const scores = getScores(ideas);
-  const done = ideas.filter((idea) => getIdeaState(idea).done);
-  const wanted = ideas.filter((idea) => getIdeaState(idea).wanted && !getIdeaState(idea).done);
+  const done = ideas.filter((idea) => getIdeaState(idea).level >= 3);
+  const wanted = ideas.filter((idea) => getIdeaState(idea).answered && getIdeaState(idea).level < idea.maturity);
   const nextIdeas = topWantedIdeas();
+  const dimensions = getDimensionScores(ideas);
+  const currentLabel = maturityNames[scores.currentLevel] || maturityLabels[scores.currentLevel];
+  const potentialLabel = maturityNames[scores.potentialLevel] || maturityLabels[scores.potentialLevel];
 
   areaTitle.textContent = "Resultado";
   areaDescription.textContent = "Resumen del estado de automatización de tu empresa.";
@@ -521,13 +605,25 @@ function renderResult() {
     <div class="result-hero">
       <span>Estado potencial</span>
       <strong>${maturityLabels[scores.potentialLevel]}</strong>
-      <p>Tu empresa está hoy en nivel ${maturityLabels[scores.currentLevel]} y podría llegar a ${maturityLabels[scores.potentialLevel]} si desarrolla las automatizaciones deseadas.</p>
+      <p>Tu empresa esta hoy en ${currentLabel} y podria llegar a ${potentialLabel} si desarrolla las automatizaciones sugeridas.</p>
     </div>
     <div class="result-metrics">
       <div><span>Actual</span><strong>${scores.currentPercent}%</strong></div>
       <div><span>Potencial</span><strong>${scores.potentialPercent}%</strong></div>
-      <div><span>Ya tienes</span><strong>${done.length}</strong></div>
-      <div><span>Quieres</span><strong>${wanted.length}</strong></div>
+      <div><span>Consistentes</span><strong>${done.length}</strong></div>
+      <div><span>Brechas</span><strong>${wanted.length}</strong></div>
+    </div>
+    <div class="result-dimensions">
+      ${dimensions
+        .map(
+          (item) => `
+            <div>
+              <span>${item.dimension}</span>
+              <i><b style="width: ${item.percent}%"></b></i>
+            </div>
+          `,
+        )
+        .join("")}
     </div>
     <div class="result-next">
       <span>Próximas automatizaciones sugeridas</span>
@@ -535,7 +631,7 @@ function renderResult() {
         ${
           nextIdeas.length
             ? nextIdeas.map((idea) => `<li>${idea.name}</li>`).join("")
-            : "<li>Marca algunas ideas como deseadas para generar recomendaciones.</li>"
+            : "<li>Responde el diagn?stico para generar recomendaciones.</li>"
         }
       </ul>
     </div>
@@ -565,13 +661,13 @@ function renderQuestion() {
   const area = areas[idea.areaKey];
   const values = getIdeaState(idea);
   const ideas = activeIdeas();
-  const progress = Math.round(((state.currentIndex + 1) / ideas.length) * 100);
+  const stats = answeredStats(ideas);
 
   areaTitle.textContent = area.title;
   areaDescription.textContent = area.description;
   areaIcon.textContent = area.icon;
   questionCounter.textContent = `Pregunta ${state.currentIndex + 1} de ${ideas.length}`;
-  questionProgress.style.width = `${progress}%`;
+  questionProgress.style.width = `${stats.percent}%`;
 
   questionCard.innerHTML = `
     <div class="question-topline">
@@ -581,21 +677,17 @@ function renderQuestion() {
     <h3>${idea.name}</h3>
     <p>${idea.detail}</p>
     <div class="answer-grid">
-      <button class="answer-button ${values.done ? "is-selected" : ""}" type="button" data-answer="done">
-        <span class="fake-checkbox" aria-hidden="true"></span>
-        <span>Lo tengo</span>
-        <small>Ya funciona en mi empresa</small>
-      </button>
-      <button class="answer-button ${values.wanted ? "is-selected" : ""}" type="button" data-answer="wanted">
-        <span class="fake-checkbox" aria-hidden="true"></span>
-        <span>Lo quiero</span>
-        <small>Me gustaría implementarlo</small>
-      </button>
-      <button class="answer-button ${!values.done && !values.wanted ? "is-muted" : ""}" type="button" data-answer="none">
-        <span class="fake-checkbox" aria-hidden="true"></span>
-        <span>No por ahora</span>
-        <small>No aplica o no es prioridad</small>
-      </button>
+      ${answerOptions
+        .map(
+          (option) => `
+            <button class="answer-button ${values.answer === option.key ? "is-selected" : ""}" type="button" data-answer="${option.key}">
+              <span class="fake-checkbox" aria-hidden="true"></span>
+              <span>${option.label}</span>
+              <small>${option.detail}</small>
+            </button>
+          `,
+        )
+        .join("")}
     </div>
   `;
 
@@ -607,12 +699,11 @@ function renderQuestion() {
 
 function renderSummary() {
   const ideas = activeIdeas();
-  const answeredCount = ideas.filter((idea) => getIdeaState(idea).answered).length;
-  const selectedDone = ideas.filter((idea) => getIdeaState(idea).done);
-  const selectedWanted = ideas.filter((idea) => getIdeaState(idea).wanted && !getIdeaState(idea).done);
+  const stats = answeredStats(ideas);
+  const selectedDone = ideas.filter((idea) => getIdeaState(idea).level >= 3);
+  const selectedWanted = ideas.filter((idea) => getIdeaState(idea).answered && getIdeaState(idea).level < idea.maturity);
   const scores = getScores(ideas);
   const gap = Math.max(0, scores.potentialPercent - scores.currentPercent);
-  const completionPercent = ideas.length ? Math.round((answeredCount / ideas.length) * 100) : 0;
 
   doneCount.textContent = selectedDone.length;
   wantedCount.textContent = selectedWanted.length;
@@ -623,8 +714,8 @@ function renderSummary() {
 
   currentCopy.textContent = `${scores.currentPercent}% de madurez según las automatizaciones que ya tienes.`;
   potentialCopy.textContent = `${scores.potentialPercent}% si desarrollas las ideas que marcaste como deseadas.`;
-  heroProgress.style.width = `${completionPercent}%`;
-  heroProgressLabel.textContent = `${completionPercent}% completado`;
+  heroProgress.style.width = `${stats.percent}%`;
+  heroProgressLabel.textContent = `${stats.percent}% completado`;
   gapValue.textContent = gap;
 
   if (gap >= 35) {
@@ -684,14 +775,14 @@ function renderAreaSelection() {
       <span>${selected.size || Object.keys(areas).length} áreas</span>
     </div>
     <h3>Elige tus áreas</h3>
-    <p>Elige solo las áreas que existen o son relevantes para tu empresa. El test se ajustará automáticamente.</p>
+    <p>Diagnóstico de madurez en 4 niveles. Toma 5 minutos y se ajusta a las áreas seleccionadas.</p>
     <div class="area-picker">
       ${Object.entries(areas)
         .map(
           ([key, area]) => `
             <button class="area-option ${selected.has(key) ? "is-selected" : ""}" type="button" data-area-choice="${key}">
               <span class="fake-checkbox" aria-hidden="true"></span>
-              <span>${area.title}</span>
+              <span><strong>${area.title}</strong><em>${area.description}</em></span>
               <small>${area.ideas.length} ideas</small>
             </button>
           `,
@@ -739,7 +830,7 @@ function renderWishlist(selectedWanted) {
             `<li><strong>${idea.name}</strong><br>${idea.areaTitle} · ${idea.type} · ${idea.outcome}</li>`,
         )
         .join("")
-    : "<li>Selecciona “Lo quiero” en las ideas que te interesan.</li>";
+    : "<li>Completa el diagnóstico para ver brechas prioritarias.</li>";
 }
 
 function render() {
@@ -768,13 +859,16 @@ questionCard.addEventListener("click", (event) => {
   const idea = currentIdea();
   const values = getIdeaState(idea);
   const answer = button.dataset.answer;
+  const option = answerOptions.find((item) => item.key === answer);
 
-  values.done = answer === "done";
-  values.wanted = answer === "wanted";
+  values.answer = answer;
+  values.level = option ? option.level : 1;
+  values.done = values.level >= 3;
+  values.wanted = values.level < idea.maturity;
   values.answered = true;
-  if (answer === "done") values.status = "activa";
-  if (answer === "wanted" && values.status === "activa") values.status = "en-idea";
-  if (answer === "none") values.status = "no-iniciada";
+  if (values.level >= 3) values.status = "activa";
+  if (values.level === 2) values.status = "en-proceso";
+  if (values.level === 1) values.status = "no-iniciada";
 
   questionCard.querySelectorAll(".answer-button").forEach((item) => {
     item.classList.remove("is-selected", "is-confirming");
@@ -839,13 +933,13 @@ document.querySelector("#resetButton").addEventListener("click", () => {
 document.querySelector("#exportButton").addEventListener("click", async () => {
   const ideas = activeIdeas();
   const scores = getScores(ideas);
-  const done = ideas.filter((idea) => getIdeaState(idea).done);
-  const wanted = ideas.filter((idea) => getIdeaState(idea).wanted && !getIdeaState(idea).done);
+  const done = ideas.filter((idea) => getIdeaState(idea).level >= 3);
+  const wanted = ideas.filter((idea) => getIdeaState(idea).answered && getIdeaState(idea).level < idea.maturity);
   const lines = wanted.map((idea) => {
     const values = getIdeaState(idea);
     return `- ${idea.name} (${idea.areaTitle}): ${idea.outcome}. Estado: ${values.status}`;
   });
-  const summary = `Checklist de Automatizacion\n\nEstado actual: ${maturityLabels[scores.currentLevel]} (${scores.currentPercent}%)\nEstado potencial: ${maturityLabels[scores.potentialLevel]} (${scores.potentialPercent}%)\nYa tiene: ${done.length}\nQuiere desarrollar: ${wanted.length}\n\nIdeas deseadas:\n${lines.join("\n") || "- Ninguna seleccionada"}`;
+  const summary = `Checklist de Automatizacion\n\nEstado actual: ${maturityLabels[scores.currentLevel]} (${scores.currentPercent}%)\nEstado potencial: ${maturityLabels[scores.potentialLevel]} (${scores.potentialPercent}%)\nAutomatizaciones consistentes: ${done.length}\nBrechas prioritarias: ${wanted.length}\n\nIdeas sugeridas:\n${lines.join("\n") || "- Ninguna seleccionada"}`;
 
   try {
     await navigator.clipboard.writeText(summary);
